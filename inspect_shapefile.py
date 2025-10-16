@@ -134,6 +134,14 @@ truth_data = truth_data[
     (truth_data["DATE_SMP"].dt.month > 4) & (truth_data["DATE_SMP"].dt.month < 11)
 ]
 
+# Add in lagos lake ids
+adk_data = pd.read_csv(os.path.join("ADK", "lagoes_adk_modified.csv"), index_col=None)
+adk_data = adk_data[
+    ["lagoslakeid", "Permanent_"]
+]  # we only care about permenant id and lagoslakeid
+adk_data["Permanent_"] = adk_data["Permanent_"].astype(str)
+truth_data = truth_data.merge(adk_data, left_on="Permanent_", right_on="Permanent_")
+
 print("Truth data: \n", truth_data)
 
 if __name__ == "__main__":
