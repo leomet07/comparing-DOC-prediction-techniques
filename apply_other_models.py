@@ -25,7 +25,11 @@ if len(sys.argv) <= 1:
 
 import inspect_shapefile
 
-other_model = joblib.load("ny-hab-cpu-model.joblib")
+other_model = joblib.load(os.path.join("other_models", "ny-hab-cpu-model.joblib"))
+lagos_lookup_table = pd.read_csv(
+    os.path.join("other_models", "generated_lagoslookuptable.csv"),
+    index_col="lagoslakei",  # for faster indexing
+)
 
 y_pred = []
 y_true = []
@@ -67,6 +71,16 @@ def get_bands_from_tif(tif_path):
         )
 
 
+def get_constants_by_lagoslakeid(lakeid):
+    lagos_lookup_table_filtered = lagos_lookup_table.loc[lakeid]
+
+    SA_SQ_KM = NAN_SUBSTITUTE_CONSANT
+    pct_dev = lagos_lookup_table_filtered["pct_dev"]
+    pct_ag = lagos_lookup_table_filtered["pct_ag"]
+
+    return SA_SQ_KM, pct_dev, pct_ag
+
+
 def add_predictions_from_algorithim_out_folder(out_folder):
     algorithim_name = out_folder.split("_")[-1].upper().replace("/", "")
     subfolders = list(os.listdir(out_folder))
@@ -97,6 +111,11 @@ def add_predictions_from_algorithim_out_folder(out_folder):
             ) = get_bands_from_tif(tif_filepath)
         except rasterio.errors.RasterioIOError:
             continue
+
+        # match lagoslakeid
+        lagoslakeid = inspect_shapefile.truth_data[
+            (inspect_shapefile.truth_data["OBJECTID"] == float(objectid))
+        ]["lagoslakeid"].iloc[0]
 
         # matched doc
         all_chla = inspect_shapefile.truth_data[
@@ -152,11 +171,30 @@ def add_predictions_from_algorithim_out_folder(out_folder):
             continue
 
         sentinel_and_constant_bands = np.full(
-            shape=(7, bands.shape[1], bands.shape[2]),
+            shape=(
+                7,
+                bands.shape[1],
+                bands.shape[2],
+            ),  # add 7 bands to make this 12 bands total
             fill_value=NAN_SUBSTITUTE_CONSANT,
             dtype=np.float64,
         )
         modified_bands = np.vstack([bands, sentinel_and_constant_bands])
+
+        SA_SQ_KM_constant, pct_dev_constant, pct_ag_constant = (
+            get_constants_by_lagoslakeid(int(lagoslakeid))
+        )
+        SA_SQ_KM_constant = 3  # manual override
+
+        modified_bands[9] = np.full_like(
+            modified_bands[0], SA_SQ_KM_constant, dtype=modified_bands.dtype
+        )
+        modified_bands[10] = np.full_like(
+            modified_bands[0], pct_dev_constant, dtype=modified_bands.dtype
+        )
+        modified_bands[11] = np.full_like(
+            modified_bands[0], pct_ag_constant, dtype=modified_bands.dtype
+        )
 
         n_bands, n_rows, n_cols = modified_bands.shape
         n_samples = n_rows * n_cols
@@ -214,15 +252,8 @@ plt.axline((0, 0), (50, 50), linewidth=2, color="red")
 colorbar = plt.colorbar()
 colorbar.set_label("Density", rotation=270, labelpad=15, fontweight="bold")
 
-plt.xscale("log")
-plt.gca().xaxis.set_major_formatter(ScalarFormatter())
-plt.ticklabel_format(axis="x", style="plain")  # so that xticks are written in decimal
-plt.yscale("log")
-plt.gca().yaxis.set_major_formatter(ScalarFormatter())
-plt.ticklabel_format(axis="y", style="plain")  # so that yticks are written in decimal
-
-plt.xlim(0.1, 100)  # starts at 0.1 bc this is LOG scale and 0 is invalid
-plt.ylim(0.1, 100)  # starts at 0.1 bc this is LOG scale and 0 is invalid
+plt.xlim(0.1, 8)  # starts at 0.1 bc this is LOG scale and 0 is invalid
+plt.ylim(0.1, 8)  # starts at 0.1 bc this is LOG scale and 0 is invalid
 plt.xlabel("Observed Chl-a (µg/L)", fontweight="bold")
 plt.ylabel("Predicted Chl-a (µg/L)", fontweight="bold")
 plt.gca().set_aspect("equal")
