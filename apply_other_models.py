@@ -74,7 +74,11 @@ def get_bands_from_tif(tif_path):
 def get_constants_by_lagoslakeid(lakeid):
     lagos_lookup_table_filtered = lagos_lookup_table.loc[lakeid]
 
-    SA_SQ_KM = NAN_SUBSTITUTE_CONSANT
+    matched_training_df = inspect_shapefile.truth_data[
+        inspect_shapefile.truth_data["lagoslakeid"] == lakeid
+    ]
+    assert len(matched_training_df) > 0
+    SA_SQ_KM = matched_training_df["AreaSqKm"].iloc[0]
     pct_dev = lagos_lookup_table_filtered["pct_dev"]
     pct_ag = lagos_lookup_table_filtered["pct_ag"]
 
