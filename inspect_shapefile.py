@@ -144,6 +144,35 @@ truth_data = truth_data.merge(adk_data, left_on="Permanent_", right_on="Permanen
 
 print("Truth data: \n", truth_data)
 
+
+# Read scale data and match it to known ALTM lake by name (does not have to be in MSI data)
+
+scale_df = pd.read_csv(
+    "/home/leo/Documents/nasa/waterquality/comparing-chla-predictions-nasa-stream/SCALE_data/SCALE_year1_LakeList.csv"
+)
+
+print("Matching SCALE lake names to ALTM lake names.")
+lagos_lake_ids_stored = []
+for index, row in scale_df.iterrows():
+    name = row["name"].upper()
+
+    matched_by_name = truth_data[truth_data["NAME"].str.upper() == name]
+    if len(matched_by_name) == 0:
+        continue
+
+    lagoslakeid = matched_by_name["lagoslakeid"].iloc[0]
+    permanent_id = matched_by_name["Permanent_"].iloc[0]
+
+    if not lagoslakeid:
+        continue  # no nones allowed
+
+    print(
+        f"Lake match found {name} lagoslakeid: {lagoslakeid} , permanent_id: {permanent_id} , # of ALTM points: {len(matched_by_name)}"
+    )
+
+    lagos_lake_ids_stored.append(int(lagoslakeid))
+
+
 if __name__ == "__main__":
     # get mean doc for each lake
     for lake_info in lake_infos_of_interest:
