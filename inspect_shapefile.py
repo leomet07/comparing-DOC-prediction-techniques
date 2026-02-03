@@ -106,6 +106,7 @@ for name_of_interest in lake_names_of_interest:
             "SITE_ID": matched_lakes_in_joined_shp_file.iloc[0]["SITE_ID"],
             "OBJECTID": matched_lakes_in_joined_shp_file.iloc[0]["OBJECTID"],
             "NAME": name_of_interest,
+            "PERMANENT_ID": matched_lakes_in_joined_shp_file.iloc[0]["Permanent_"],
         }
     )
 
@@ -132,6 +133,9 @@ print("Truth data: \n", truth_data)
 
 if __name__ == "__main__":
     # get mean doc for each lake
+
+    mean_DOC_results = []
+
     for lake_info in lake_infos_of_interest:
         lake_name = lake_info["NAME"].lower().replace(" ", "_")
         lake_objectid = lake_info["OBJECTID"]
@@ -141,3 +145,12 @@ if __name__ == "__main__":
 
         mean_doc = use_dataset["DOC_MG_L"].mean()
         print(f"{lake_name} has a mean DOC of {mean_doc}. {len(use_dataset)} points.")
+        mean_DOC_results.append(
+            {
+                "name": lake_name.upper(),
+                "permanent_id": int(lake_info["PERMANENT_ID"]),
+                "doc": mean_doc,
+            }
+        )
+
+    pprint(mean_DOC_results)
